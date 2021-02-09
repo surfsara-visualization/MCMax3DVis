@@ -1,4 +1,4 @@
-# Pilot project: 3D visualizations of circumstellar and circumplanetary disks
+# Project: 3D visualizations of circumstellar and circumplanetary disks
 
 **Team members**: Bayron Portilla (RUG), Michiel Min (SRON), Christian Rab (Max Planck), Inga Kamp (RUG), Rens Waters (RU), Carsten Dominik (UvA)
 
