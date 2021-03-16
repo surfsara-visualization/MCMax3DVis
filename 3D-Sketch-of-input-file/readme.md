@@ -3,6 +3,11 @@
 ## What it does
 The script ```MCMax3D-sketch.py``` can generate a 3D sketch from an MCMax3D input file using Blender. The script can be executed through the command-line.
 
+| ![](readme_images/render_from_x_direction.png?raw=true) | 
+|:--:| 
+| **Figure 1**: Example of a sketch from ```MCMax3D-sketch.py```  |
+
+
 ## How to run
 - Install Blender 2.8+: www.blender.org
 - Download or clone ```MCMax3D-sketch.py``` to your machine
