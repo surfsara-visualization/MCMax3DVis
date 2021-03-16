@@ -1,32 +1,63 @@
 import bpy
 import math
 import random
+import sys
+import os
+import argparse
 
-zones = [
-{
-"denstype":'SURFDENSFILE',
-"densfile":'surface_density_PDS70.dat',
-"Rin":0.05,
-"Rout":20.0,
-"nr":60,
-"nt":50,
-"np":60,
-"shpow":1.1,
-"sh":16.8,
-"rsh":120,
-"zone_theta":0.0,
-"zone_phi":0.0,
-"alpha":1.0e-3,
-"zone_x":0,
-"zone_y":0,
-"zone_z":0
-},
-]
+##
+# MANAGE ALL THE COMMAND LINE OPTIONS
+##
+if '--' in sys.argv:
+    argv = sys.argv[sys.argv.index('--') + 1:]
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-f', '--input_file', dest='input_file', metavar='FILE')
+    parser.add_argument('-o', '--output_directory', dest='output_directory', metavar='FILE', required=False)
+    parser.add_argument('-m', '--visualization_mode', dest='mode', type=str, required=False)
+    parser.add_argument('-c', '--camera_distance', dest='camera_distance', type=float, required=False)
+    args = parser.parse_known_args(argv)[0]
+
+    if args.input_file:
+        input_file = args.input_file
+    else:
+        print()
+        print("=> No input file specified, quitting")
+        sys.exit()
+    if args.mode:
+        mode = args.mode
+    else:
+        mode = 1
+
+    if args.output_directory:
+        output_directory = args.output_directory
+    else:
+        output_directory = 'output_'+input_file.split('.')[0]
+    if not os.path.isdir(output_directory):
+        os.mkdir(output_directory)
+
+    if args.camera_distance:
+        camera_distance = args.camera_distance
+    else:
+        camera_distance = 5
+else:
+    print()
+    print("=> No input file specified, quitting")
+    sys.exit()
+
+# Printen parameters
+print()
+print('input_file: ', input_file)
+print('output_directory: ', output_directory)
+print('mode: ', mode)
+print('camera distance: ', camera_distance, ' times largest radius among zones')
+print()
 
 
+##
+# READ IN THE MCMAX FILE
+##
 zones = {}
-
-with open('input_with_cpd_spicy.dat', 'r') as reader:
+with open(input_file, 'r') as reader:
     line = reader.readline()
     while line != '':
         if line.startswith('zone'):#"zone" in line and line[0] != "*":
@@ -51,10 +82,11 @@ with open('input_with_cpd_spicy.dat', 'r') as reader:
                 zones[zone_nr].update({zone_key:zone_val})
 
         line = reader.readline()
-print(zones)
 
+##
+# FUNCTION TO CREATE ONE ZONE
+##
 def drawZone(zone_nr, Rin, Rout, shpow, sh, rsh, zone_theta, zone_phi, zone_x, zone_y, zone_z, rgb_color):
-
     # First we make the disk in the local coordinates of the zone
     # (Later we will translate the zone using zone_x, zone_y and zone_z 
     # and rotate it using zone_theta and zone_phi)
@@ -110,22 +142,12 @@ def drawZone(zone_nr, Rin, Rout, shpow, sh, rsh, zone_theta, zone_phi, zone_x, z
             Ry_down = y_down
             Rz_down = -1*x_down*math.sin(zone_theta) + z_down*math.cos(zone_theta)            
             
-            # Rotation of theta around x-axis, counter clockwise / righthanded
-#            Rx_up = x_up
-#            Ry_up = y_up*math.cos(zone_theta) - z_up*math.sin(zone_theta)
-#            Rz_up = y_up*math.sin(zone_theta) + z_up*math.cos(zone_theta)
-#            Rx_down = x_down
-#            Ry_down = y_down*math.cos(zone_theta) - z_down*math.sin(zone_theta)
-#            Rz_down = y_down*math.sin(zone_theta) + z_down*math.cos(zone_theta)
-##            
-#            # Rotation of phi around z-axis, counter clockwise / righthanded
             x_up = Rx_up*math.cos(zone_phi) - Ry_up*math.sin(zone_phi)
             y_up = Rx_up*math.sin(zone_phi) + Ry_up*math.cos(zone_phi)
             z_up = Rz_up
             x_down = Rx_down*math.cos(zone_phi) - Ry_down*math.sin(zone_phi)
             y_down = Rx_down*math.sin(zone_phi) + Ry_down*math.cos(zone_phi)
             z_down = Rz_down
-            
             
             x_up += zone_x
             y_up += zone_y
@@ -170,9 +192,6 @@ def drawZone(zone_nr, Rin, Rout, shpow, sh, rsh, zone_theta, zone_phi, zone_x, z
     ob = bpy.data.objects.new(ob_name, mesh)
     # Add a material and use the radial size of the disk to give it a color:
     material_name = ob_name+"_mat"
-    #if material_name in bpy.data.materials:
-    #    mesh.materials.append(bpy.data.materials[material_name])
-    #else:
     if zone_x != 0 or zone_y != 0 or zone_z != 0:
         opaque = True
     else: 
@@ -213,20 +232,17 @@ def drawZone(zone_nr, Rin, Rout, shpow, sh, rsh, zone_theta, zone_phi, zone_x, z
     #                         Thus color_layer.data can be indexed using the values in loop_index.
 
     i=0
-    #if vert_colors:
     for poly in mesh.polygons:
         for vert_i_poly, vert_i_mesh in enumerate(poly.vertices):#loop_indices:
-            #rgb = [random.random(),0,0,0]
             vert_i_loop = poly.loop_indices[vert_i_poly]
             color_layer.data[vert_i_loop].color = rgb_color#vert_colors[vert_i_mesh]#rgb
             i += 1
 
 
-
+##
+# CREATE A MATERIAL FOR A ZONE
+## 
 def create_material(name, radial_size_disk_to_scale_color, rgb_color, opaque=False):
-
-    print("Making material and shaders")
-
     # Make material
     mat = bpy.data.materials.new(name)
     if opaque:
@@ -257,7 +273,8 @@ def create_material(name, radial_size_disk_to_scale_color, rgb_color, opaque=Fal
     node_BSDF_transparency.location = -200, 180
 
     # BSDF SHader Diffuse
-    node_BSDF_shader = nodes.new(type='ShaderNodeBsdfDiffuse')
+    #node_BSDF_shader = nodes.new(type='ShaderNodeBsdfDiffuse')
+    node_BSDF_shader = nodes.new(type='ShaderNodeEmission')
     node_BSDF_shader.location = -200, 60
     
     # Mixer
@@ -278,7 +295,19 @@ def create_material(name, radial_size_disk_to_scale_color, rgb_color, opaque=Fal
     
     return mat
 
-    
+
+
+##
+# CLEAN UP THE INITIAL OBJECTS
+##
+for obj in bpy.data.objects:
+    bpy.data.objects.remove(obj, do_unlink=True)
+for cam in bpy.data.cameras:
+    bpy.data.cameras.remove(cam, do_unlink=True)
+
+##
+# WALK OVER EACH ZONE AND CREATE IT. (ALSO FIGURE OUT THE LARGEST RADIUS NEEDED TO PLACE CAMERAS LATER)
+##
 maxR = 0
 opac=0.5
 i_color = 0
@@ -302,7 +331,45 @@ for key,z in zones.items():
     drawZone(key, z['Rin'], z['Rout'], z['shpow'], z['sh'], z['rsh'], 
                 z['theta'], z['phi'], z['x'], z['y'], z['z'], rgb_color)
                 
-                
-bpy.ops.object.camera_add(enter_editmode=False, align='VIEW', location=(5*maxR, 0, 0), rotation=(0.5*math.pi, 0, 0.5*math.pi))
-bpy.ops.object.camera_add(enter_editmode=False, align='VIEW', location=(0,0, 5*maxR), rotation=(0, 0, 0.5*math.pi))
-bpy.ops.object.camera_add(enter_editmode=False, align='VIEW', location=(-5*maxR, 0, 0), rotation=(0.5*math.pi, 0, -0.5*math.pi))
+
+##
+# SAVE/EXPORT THE MODEL
+##
+bpy.ops.wm.save_as_mainfile(filepath=os.path.join(output_directory, "model.blend"))
+bpy.ops.export_scene.obj(filepath=os.path.join(output_directory, "model.obj"),use_materials=True)
+bpy.ops.export_scene.gltf(filepath=os.path.join(output_directory, "model"))
+
+##
+# MAKE RENDERS
+##
+# Add cameras                
+cam = bpy.data.cameras.new(name='from_x_direction')
+camera_object = bpy.data.objects.new('from_x_direction', cam)
+bpy.context.collection.objects.link(camera_object)
+camera_object.location = (camera_distance*maxR, 0, 0)
+camera_object.rotation_euler = (0.5*math.pi, 0, 0.5*math.pi)
+
+cam = bpy.data.cameras.new(name='from_z_direction')
+camera_object = bpy.data.objects.new('from_z_direction', cam)
+bpy.context.collection.objects.link(camera_object)
+camera_object.location = (0,0, camera_distance*maxR)
+camera_object.rotation_euler = (0, 0, 0.5*math.pi)
+
+cam = bpy.data.cameras.new(name='from_-x_direction')
+camera_object = bpy.data.objects.new('from_-x_direction', cam)
+bpy.context.collection.objects.link(camera_object)
+camera_object.location = (-camera_distance*maxR, 0, 0)
+camera_object.rotation_euler = (0.5*math.pi, 0, -0.5*math.pi)
+
+##
+# MAKE RENDERS FOR EVERY CAMERA
+##
+for i in range(len(bpy.data.cameras)):
+    camera = bpy.data.cameras[i]
+    bpy.data.cameras[camera.name].clip_end = camera_distance*maxR + 1.5*maxR # Scale the distance to which is rendered to make sure all disks are seen
+    bpy.context.scene.camera = bpy.data.objects[camera.name]
+    bpy.context.scene.render.filepath = os.path.join(output_directory,"render_"+camera.name+".jpg")
+    bpy.ops.render.render(write_still = True)
+
+
+
