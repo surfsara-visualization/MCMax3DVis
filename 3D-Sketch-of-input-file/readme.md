@@ -7,6 +7,7 @@ The script ```MCMax3D-sketch.py``` can generate a 3D sketch from an MCMax3D inpu
 |:--:| 
 | **Figure 1**: Example of a sketch from ```MCMax3D-sketch.py```  |
 
+## Only runs with Blender 2.93 or lower
 
 ## How to run
 - Install Blender 2.8+: www.blender.org
